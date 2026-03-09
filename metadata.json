@@ -1,0 +1,7 @@
+{
+  "name": "Relatórios Reobote",
+  "description": "Sistema de relatórios diários para manutenção industrial.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
