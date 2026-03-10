@@ -15,7 +15,7 @@ export default function StatsCard({ reports, currentFilter, onFilterChange }: St
   const completed = reports.filter(r => r.clientSignature && r.supervisorSignature).length;
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <button 
         onClick={() => onFilterChange('all')}
         className={`text-left p-4 rounded-2xl shadow-sm border transition-all ${currentFilter === 'all' ? 'bg-blue-600 border-blue-600' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}

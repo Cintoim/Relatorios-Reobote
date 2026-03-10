@@ -88,7 +88,7 @@ export default function ClientForm({ initialData, onSave, onCancel }: ClientForm
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">CNPJ</label>
             <input 
@@ -108,8 +108,8 @@ export default function ClientForm({ initialData, onSave, onCancel }: ClientForm
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Endereço</label>
             <input 
               {...register("address")}
@@ -129,7 +129,7 @@ export default function ClientForm({ initialData, onSave, onCancel }: ClientForm
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Bairro</label>
             <input 
@@ -199,7 +199,7 @@ export default function ClientForm({ initialData, onSave, onCancel }: ClientForm
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">E-mail</label>
                     <input 

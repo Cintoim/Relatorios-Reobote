@@ -45,6 +45,8 @@ interface Report {
   equipment: string;
   equipmentTag?: string;
   equipmentLocation?: string;
+  startTime?: string;
+  endTime?: string;
   supervisor: string;
   activities: Activity[];
   idleHours?: IdleHour[];
@@ -79,25 +81,50 @@ const typeLabels: Record<string, string> = {
 export default function ReportDetail({ report, onClose, onEdit, onDelete }: ReportDetailProps) {
   const [deleteStage, setDeleteStage] = React.useState(0);
 
+  const formatDuration = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
   const generatePDF = () => {
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(37, 99, 235);
-    doc.text('Relatório de Manutenção Industrial', 105, 20, { align: 'center' });
+    // Header - Empresa
+    doc.setFontSize(18);
+    doc.setTextColor(37, 99, 235); // Blue-600
+    doc.setFont('helvetica', 'bold');
+    doc.text('REOBOTE MULT-SERVICE', 105, 15, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Data: ${format(new Date(report.date), "dd/MM/yyyy HH:mm")}`, 105, 28, { align: 'center' });
+    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.setFont('helvetica', 'normal');
+    doc.text('Rua Turmalina, 163 - Sorriso-MT', 105, 22, { align: 'center' });
+    doc.text('Contato: (66) 99632-5747 | jader.reobote@outlook.com', 105, 27, { align: 'center' });
+    
+    // Linha divisória
+    doc.setDrawColor(226, 232, 240); // Slate-200
+    doc.line(14, 32, 196, 32);
+
+    // Título do Relatório
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42); // Slate-900
+    doc.setFont('helvetica', 'bold');
+    doc.text('RELATÓRIO DE MANUTENÇÃO', 105, 42, { align: 'center' });
+    
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${format(new Date(report.date), "dd/MM/yyyy HH:mm")}`, 105, 48, { align: 'center' });
 
     // Info Section
     doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text('Informações Gerais', 14, 40);
+    doc.setTextColor(37, 99, 235);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Informações Gerais', 14, 60);
     
     (doc as any).autoTable({
-      startY: 45,
+      startY: 65,
       head: [['Campo', 'Valor']],
       body: [
         ['Cliente', report.client],
@@ -105,6 +132,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
         ['Equipamento', report.equipment],
         ['Tag', report.equipmentTag || '-'],
         ['Local', report.equipmentLocation || '-'],
+        ['Horário', `${report.startTime || '08:00'} às ${report.endTime || '17:00'}`],
         ['Encarregado', report.supervisor],
       ],
       theme: 'striped',
@@ -149,9 +177,9 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
             idle.reason,
             idle.startTime,
             idle.endTime,
-            `${calculateDuration(idle.startTime, idle.endTime).toFixed(2)}h`
+            formatDuration(calculateDuration(idle.startTime, idle.endTime))
           ]),
-          [{ content: 'TOTAL', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `${totalIdle.toFixed(2)}h`, styles: { fontStyle: 'bold' } }]
+          [{ content: 'TOTAL', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: formatDuration(totalIdle), styles: { fontStyle: 'bold' } }]
         ],
         theme: 'grid',
         headStyles: { fillColor: [245, 158, 11] }
@@ -331,10 +359,16 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
                 <Calendar className="w-3 h-3" />
                 {format(new Date(report.date), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
               </div>
+              {(report.startTime || report.endTime) && (
+                <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-wider mt-1">
+                  <Clock className="w-3 h-3" />
+                  {report.startTime || '08:00'} às {report.endTime || '17:00'}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-50 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-slate-50 dark:border-slate-800">
             <div className="space-y-1">
               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1">
                 <Building2 className="w-3 h-3" /> Cliente
@@ -407,7 +441,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
                         <p className="text-sm font-bold text-amber-900 dark:text-amber-200">{idle.reason}</p>
                         <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Das {idle.startTime} às {idle.endTime}</p>
                       </div>
-                      <span className="text-xs font-black text-amber-700 dark:text-amber-400 whitespace-nowrap">{duration.toFixed(2)}h</span>
+                      <span className="text-xs font-black text-amber-700 dark:text-amber-400 whitespace-nowrap">{formatDuration(duration)}</span>
                     </div>
                   );
                 })}
@@ -415,11 +449,11 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
               <div className="bg-amber-100 dark:bg-amber-900/40 px-4 py-3 flex justify-between items-center">
                 <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-widest">Total Ocioso</span>
                 <span className="text-sm font-black text-amber-800 dark:text-amber-300">
-                  {report.idleHours.reduce((acc, curr) => {
+                  {formatDuration(report.idleHours.reduce((acc, curr) => {
                     const [sH, sM] = curr.startTime.split(':').map(Number);
                     const [eH, eM] = curr.endTime.split(':').map(Number);
                     return acc + ((eH * 60 + eM) - (sH * 60 + sM)) / 60;
-                  }, 0).toFixed(2)}h
+                  }, 0))}
                 </span>
               </div>
             </div>
@@ -455,7 +489,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
         {/* Signatures Section */}
         <section className="space-y-4">
           <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Assinaturas Digitais</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
               <div className="h-20 flex items-center justify-center mb-2">
                 {report.clientSignature ? (

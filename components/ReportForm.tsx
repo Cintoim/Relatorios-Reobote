@@ -30,6 +30,8 @@ const reportSchema = z.object({
   equipment: z.string().min(2, "Equipamento é obrigatório"),
   equipmentTag: z.string().optional(),
   equipmentLocation: z.string().optional(),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:mm").default("08:00"),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:mm").default("17:00"),
   supervisor: z.string().min(2, "Nome do encarregado é obrigatório"),
   activities: z.array(activitySchema).min(1, "Adicione pelo menos uma atividade"),
   idleHours: z.array(idleHourSchema).default([]),
@@ -41,10 +43,10 @@ const reportSchema = z.object({
 
 type ReportFormData = z.infer<typeof reportSchema>;
 
-interface ReportFormProps {
-  initialData?: ReportFormData & { id?: string; photo?: string; photos?: string[]; date?: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string };
+  interface ReportFormProps {
+  initialData?: ReportFormData & { id?: string; photo?: string; photos?: string[]; date?: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string; startTime?: string; endTime?: string };
   clients?: ClientData[];
-  onSave: (data: ReportFormData & { id?: string; photo?: string; photos?: string[]; date: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string }) => void;
+  onSave: (data: ReportFormData & { id?: string; photo?: string; photos?: string[]; date: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string; startTime?: string; endTime?: string }) => void;
   onCancel: () => void;
 }
 
@@ -116,6 +118,12 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
     return diff > 0 ? diff / 60 : 0;
   };
 
+  const formatDuration = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
   const totalIdleHours = idleHours.reduce((acc, curr) => {
     return acc + calculateDuration(curr.startTime, curr.endTime);
   }, 0);
@@ -172,7 +180,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cliente</label>
             <input 
@@ -215,7 +223,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
           {errors.equipment && <p className="text-red-500 text-xs mt-1">{errors.equipment.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tag do Equipamento</label>
             <input 
@@ -242,6 +250,27 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
             className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           {errors.supervisor && <p className="text-red-500 text-xs mt-1">{errors.supervisor.message}</p>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hora Inicial</label>
+            <input 
+              type="time"
+              {...register("startTime")}
+              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            {errors.startTime && <p className="text-red-500 text-xs mt-1">{errors.startTime.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hora Final</label>
+            <input 
+              type="time"
+              {...register("endTime")}
+              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            {errors.endTime && <p className="text-red-500 text-xs mt-1">{errors.endTime.message}</p>}
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -367,7 +396,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
               
               <div className="text-right">
                 <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400">
-                  Subtotal: {calculateDuration(idle.startTime, idle.endTime).toFixed(2)}h
+                  Subtotal: {formatDuration(calculateDuration(idle.startTime, idle.endTime))}
                 </span>
               </div>
             </div>
@@ -376,7 +405,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
           {idleHours.length > 0 && (
             <div className="flex justify-between items-center p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl">
               <span className="text-xs font-black text-amber-700 dark:text-amber-300 uppercase tracking-widest">Total Horas Ociosas</span>
-              <span className="text-sm font-black text-amber-700 dark:text-amber-300">{totalIdleHours.toFixed(2)}h</span>
+              <span className="text-sm font-black text-amber-700 dark:text-amber-300">{formatDuration(totalIdleHours)}</span>
             </div>
           )}
         </div>
@@ -433,7 +462,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
           <SignaturePad 
             label="Assinatura Supervisão Cliente" 
             onSave={(sig) => setValue("clientSignature", sig)}

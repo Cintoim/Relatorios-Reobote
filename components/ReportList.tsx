@@ -19,6 +19,8 @@ interface Report {
   equipment: string;
   equipmentTag?: string;
   equipmentLocation?: string;
+  startTime?: string;
+  endTime?: string;
   supervisor: string;
   activities: Activity[];
   date: string;
