@@ -90,21 +90,63 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
   const generatePDF = () => {
     const doc = new jsPDF();
     
+    // Header Background Gradient (Blue to Green) with Opacity
+    const startColor = [0, 51, 102]; // Azul Escuro
+    const endColor = [34, 197, 94];   // Verde
+    const headerHeight = 35;
+    
+    // Set opacity for the background
+    doc.saveGraphicsState();
+    // @ts-ignore - GState is available in jsPDF 2.x
+    doc.setGState(new (doc as any).GState({ opacity: 0.9 })); 
+    
+    const steps = 70; // More steps for a smoother gradient
+    const stepHeight = headerHeight / steps;
+    
+    for (let i = 0; i < steps; i++) {
+      const ratio = i / steps;
+      const r = Math.floor(startColor[0] * (1 - ratio) + endColor[0] * ratio);
+      const g = Math.floor(startColor[1] * (1 - ratio) + endColor[1] * ratio);
+      const b = Math.floor(startColor[2] * (1 - ratio) + endColor[2] * ratio);
+      doc.setFillColor(r, g, b);
+      // Use rect with a tiny overlap to avoid "cracked" look
+      doc.rect(0, i * stepHeight, 210, stepHeight + 0.2, 'F');
+    }
+    doc.restoreGraphicsState();
+
     // Header - Empresa
-    doc.setFontSize(18);
-    doc.setTextColor(37, 99, 235); // Blue-600
+    const name = 'Reobote Mult-Service';
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.text('REOBOTE MULT-SERVICE', 105, 15, { align: 'center' });
+    const nameWidth = doc.getTextWidth(name);
+    const centerX = 105;
+    const nameY = 18;
+    doc.text(name, centerX, nameY, { align: 'center' });
     
+    // Gear Icon
+    const gearX = centerX - (nameWidth / 2) - 12;
+    const gearY = nameY - 4;
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.5);
+    doc.circle(gearX, gearY, 3, 'S');
+    for (let a = 0; a < 360; a += 45) {
+      const rad = a * Math.PI / 180;
+      doc.line(
+        gearX + Math.cos(rad) * 3, 
+        gearY + Math.sin(rad) * 3, 
+        gearX + Math.cos(rad) * 4.5, 
+        gearY + Math.sin(rad) * 4.5
+      );
+    }
+
     doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139); // Slate-500
-    doc.setFont('helvetica', 'normal');
-    doc.text('Rua Turmalina, 163 - Sorriso-MT', 105, 22, { align: 'center' });
-    doc.text('Contato: (66) 99632-5747 | jader.reobote@outlook.com', 105, 27, { align: 'center' });
+    doc.setFont('helvetica', 'italic');
+    doc.text('aprimorando idéias, gerando soluções', centerX, 26, { align: 'center' });
     
-    // Linha divisória
-    doc.setDrawColor(226, 232, 240); // Slate-200
-    doc.line(14, 32, 196, 32);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Rua Turmalina, 163 - Sorriso-MT | (66) 99632-5747 | jader.reobote@outlook.com', centerX, 31, { align: 'center' });
 
     // Título do Relatório
     doc.setFontSize(14);
@@ -136,7 +178,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
         ['Encarregado', report.supervisor],
       ],
       theme: 'striped',
-      headStyles: { fillColor: [37, 99, 235] }
+      headStyles: { fillColor: [0, 51, 102] }
     });
 
     // Activities Section
@@ -152,7 +194,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
         act.description
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [37, 99, 235] }
+      headStyles: { fillColor: [0, 51, 102] }
     });
 
     // Idle Hours Section
@@ -182,7 +224,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
           [{ content: 'TOTAL', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: formatDuration(totalIdle), styles: { fontStyle: 'bold' } }]
         ],
         theme: 'grid',
-        headStyles: { fillColor: [245, 158, 11] }
+      headStyles: { fillColor: [34, 197, 94] }
       });
       currentY = (doc as any).lastAutoTable.finalY + 15;
     } else {
