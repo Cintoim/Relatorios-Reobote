@@ -1,6 +1,6 @@
 import React from 'react';
-import { User, Mail, MapPin, Building2, Edit2, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { User, MapPin, Building2, Edit2, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ClientData } from './ClientForm';
 
 interface ClientListProps {

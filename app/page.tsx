@@ -2,20 +2,23 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Settings, Search, ClipboardList, Users, Home as HomeIcon, FileText } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
+import { motion, AnimatePresence } from 'framer-motion';
+// import confetti from 'canvas-confetti'; // Removed for SSR compatibility
 import StatsCard from '@/components/StatsCard';
 import ReportList from '@/components/ReportList';
-import ReportForm from '@/components/ReportForm';
-import ReportDetail from '@/components/ReportDetail';
+import dynamic from 'next/dynamic';
+import type { Report } from '@/components/ReportForm';
+const ReportForm = dynamic(() => import('@/components/ReportForm'), { ssr: false });
+const ReportDetail = dynamic(() => import('@/components/ReportDetail'), { ssr: false });
 import ClientForm, { ClientData } from '@/components/ClientForm';
 import ClientList from '@/components/ClientList';
 import SettingsModal from '@/components/SettingsModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 type ViewType = 'home' | 'reports' | 'clients' | 'settings';
 
 export default function Home() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
   const [activeView, setActiveView] = useState<ViewType>('home');
   const [reportFilter, setReportFilter] = useState<'all' | 'pending' | 'completed'>('all');
@@ -23,7 +26,8 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isClientFormOpen, setIsClientFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'report' | 'client', id: string } | null>(null);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,8 +58,8 @@ export default function Home() {
     setSearchQuery('');
   };
 
-  const saveReport = (newReport: any) => {
-    let updated;
+  const saveReport = (newReport: Report) => {
+    let updated: Report[];
     if (newReport.id) {
       updated = reports.map(r => r.id === newReport.id ? newReport : r);
     } else {
@@ -68,20 +72,35 @@ export default function Home() {
     setSelectedReport(null);
     setIsDetailOpen(false);
     
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#2563eb', '#10b981', '#f59e0b']
+    import('canvas-confetti').then((confetti) => {
+      confetti.default({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#2563eb', '#10b981', '#f59e0b']
+      });
     });
   };
 
   const deleteReport = (id: string) => {
-    const updated = reports.filter(r => r.id !== id);
-    setReports(updated);
-    localStorage.setItem('industrial_reports', JSON.stringify(updated));
-    setIsDetailOpen(false);
-    setSelectedReport(null);
+    setConfirmDelete({ type: 'report', id });
+  };
+
+  const confirmDeleteAction = () => {
+    if (!confirmDelete) return;
+
+    if (confirmDelete.type === 'report') {
+      const updated = reports.filter(r => r.id !== confirmDelete.id);
+      setReports(updated);
+      localStorage.setItem('industrial_reports', JSON.stringify(updated));
+      setIsDetailOpen(false);
+      setSelectedReport(null);
+    } else {
+      const updated = clients.filter(c => c.id !== confirmDelete.id);
+      setClients(updated);
+      localStorage.setItem('industrial_clients', JSON.stringify(updated));
+    }
+    setConfirmDelete(null);
   };
 
   const saveClient = (newClient: ClientData) => {
@@ -99,28 +118,26 @@ export default function Home() {
     setIsClientFormOpen(false);
     setSelectedClient(null);
     
-    confetti({
-      particleCount: 50,
-      spread: 50,
-      origin: { y: 0.8 },
-      colors: ['#2563eb', '#10b981']
+    import('canvas-confetti').then((confetti) => {
+      confetti.default({
+        particleCount: 50,
+        spread: 50,
+        origin: { y: 0.8 },
+        colors: ['#2563eb', '#10b981']
+      });
     });
   };
 
   const deleteClient = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      const updated = clients.filter(c => c.id !== id);
-      setClients(updated);
-      localStorage.setItem('industrial_clients', JSON.stringify(updated));
-    }
+    setConfirmDelete({ type: 'client', id });
   };
 
-  const handleReportClick = (report: any) => {
+  const handleReportClick = (report: Report) => {
     setSelectedReport(report);
     setIsDetailOpen(true);
   };
 
-  const handleEditReport = (report: any) => {
+  const handleEditReport = (report: Report) => {
     setSelectedReport(report);
     setIsDetailOpen(false);
     setIsFormOpen(true);
@@ -425,6 +442,19 @@ export default function Home() {
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 
+      />
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title={confirmDelete?.type === 'report' ? 'Excluir Relatório' : 'Excluir Cliente'}
+        message={confirmDelete?.type === 'report' 
+          ? 'Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.' 
+          : 'Tem certeza que deseja excluir este cliente? Todos os dados associados serão removidos.'}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete(null)}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
       />
     </main>
   );

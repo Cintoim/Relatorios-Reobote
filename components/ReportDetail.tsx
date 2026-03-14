@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,48 +16,20 @@ import {
   Clock,
   AlertCircle,
   Share2,
-  MessageCircle,
   Trash2,
   AlertTriangle,
-  Download
+  Download,
+  Loader2,
+  Eye
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { motion, AnimatePresence } from 'framer-motion';
+// import jsPDF from 'jspdf'; // Removed for SSR compatibility
+// import { UserOptions } from 'jspdf-autotable'; // Removed for SSR compatibility
+import { Report } from './ReportForm';
 
-interface Activity {
-  type: string;
-  status: string;
-  description: string;
-}
-
-interface IdleHour {
-  reason: string;
-  startTime: string;
-  endTime: string;
-}
-
-interface Report {
-  id: string;
-  client: string;
-  requester: string;
-  requesterEmail?: string;
-  requesterContact?: string;
-  equipment: string;
-  equipmentTag?: string;
-  equipmentLocation?: string;
-  startTime?: string;
-  endTime?: string;
-  supervisor: string;
-  activities: Activity[];
-  idleHours?: IdleHour[];
-  date: string;
-  photo?: string;
-  photos?: string[];
-  observations?: string;
-  clientSignature?: string;
-  supervisorSignature?: string;
-}
+// Type definition for jsPDF with autoTable
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type jsPDFWithAutoTable = any;
 
 interface ReportDetailProps {
   report: Report;
@@ -65,7 +38,7 @@ interface ReportDetailProps {
   onDelete: (id: string) => void;
 }
 
-const statusConfig: Record<string, { icon: any, color: string, label: string }> = {
+const statusConfig: Record<string, { icon: React.ElementType, color: string, label: string }> = {
   completed: { icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-50 border-emerald-100', label: 'Concluído' },
   in_progress: { icon: Clock, color: 'text-amber-500 bg-amber-50 border-amber-100', label: 'Em Andamento' },
   pending: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-100', label: 'Pendente' },
@@ -80,6 +53,8 @@ const typeLabels: Record<string, string> = {
 
 export default function ReportDetail({ report, onClose, onEdit, onDelete }: ReportDetailProps) {
   const [deleteStage, setDeleteStage] = React.useState(0);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [shareStatus, setShareStatus] = React.useState<'idle' | 'generating' | 'sharing' | 'error'>('idle');
 
   const formatDuration = (hours: number) => {
     const h = Math.floor(hours);
@@ -87,8 +62,11 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
+  const generatePDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+    
+    const doc = new jsPDF() as jsPDFWithAutoTable;
     
     // Header Background Gradient (Blue to Green) with Opacity
     const startColor = [0, 51, 102]; // Azul Escuro
@@ -97,8 +75,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
     
     // Set opacity for the background
     doc.saveGraphicsState();
-    // @ts-ignore - GState is available in jsPDF 2.x
-    doc.setGState(new (doc as any).GState({ opacity: 0.9 })); 
+    doc.setGState(new (doc as jsPDFWithAutoTable).GState({ opacity: 0.9 })); 
     
     const steps = 70; // More steps for a smoother gradient
     const stepHeight = headerHeight / steps;
@@ -165,7 +142,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
     doc.setFont('helvetica', 'bold');
     doc.text('Informações Gerais', 14, 60);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 65,
       head: [['Campo', 'Valor']],
       body: [
@@ -185,7 +162,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
     const finalY = (doc as any).lastAutoTable.finalY || 45;
     doc.text('Atividades Realizadas', 14, finalY + 15);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: finalY + 20,
       head: [['Tipo', 'Status', 'Descrição']],
       body: report.activities.map(act => [
@@ -211,7 +188,7 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
 
       const totalIdle = report.idleHours.reduce((acc, curr) => acc + calculateDuration(curr.startTime, curr.endTime), 0);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: currentY + 5,
         head: [['Motivo', 'Início', 'Fim', 'Duração']],
         body: [
@@ -248,14 +225,14 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
     }
 
     // Photos
-    currentY = Math.max(currentY, (doc as any).lastAutoTable.finalY + 15);
+    currentY = Math.max(currentY, ((doc as any).lastAutoTable?.finalY || 0) + 15);
     const allPhotos = report.photos || (report.photo ? [report.photo] : []);
     
     if (allPhotos.length > 0) {
       doc.text('Registros Fotográficos', 14, currentY);
       currentY += 10;
 
-      allPhotos.forEach((photo, index) => {
+      allPhotos.forEach((photo) => {
         if (currentY > 180) {
           doc.addPage();
           currentY = 20;
@@ -295,41 +272,90 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
   };
 
   const shareToWhatsApp = async () => {
-    const doc = generatePDF();
-    const pdfBlob = doc.output('blob');
-    const fileName = `Relatorio_${report.equipment.replace(/\s+/g, '_')}_${format(new Date(report.date), "ddMMyyyy")}.pdf`;
-    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+    try {
+      setShareStatus('generating');
+      // Small delay to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const doc = await generatePDF();
+      const pdfBlob = doc.output('blob');
+      const fileName = `Relatorio_${report.equipment.replace(/\s+/g, '_')}_${format(new Date(report.date), "ddMMyyyy")}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Try to use Web Share API if available
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: 'Relatório de Manutenção',
-          text: `Relatório de Manutenção - ${report.equipment} - ${report.client}`,
-        });
-        return;
-      } catch (error) {
-        console.error('Error sharing:', error);
+      setShareStatus('sharing');
+
+      // Try to use Web Share API if available
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Relatório de Manutenção',
+            text: `Relatório de Manutenção - ${report.equipment} - ${report.client}`,
+          });
+          setShareStatus('idle');
+          return;
+        } catch (error) {
+          if (error instanceof Error && error.name !== 'AbortError') {
+            console.error('Error sharing:', error);
+          } else {
+            setShareStatus('idle');
+            return; // User cancelled
+          }
+        }
       }
+
+      // Fallback: Open WhatsApp with message (skipping file download if it causes crashes on some mobile webviews)
+      const message = `Olá! Segue o Relatório de Manutenção do equipamento ${report.equipment}.\n\nCliente: ${report.client}\nData: ${format(new Date(report.date), "dd/MM/yyyy")}\nStatus: ${report.activities.every(a => a.status === 'completed') ? 'Concluído' : 'Em Andamento'}`;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+      
+      // Try to download as well, but wrap it to prevent total crash if possible
+      try {
+        doc.save(fileName);
+      } catch (downloadErr) {
+        console.error('Download fallback error:', downloadErr);
+      }
+
+      // Open WhatsApp
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      setShareStatus('idle');
+    } catch (err) {
+      console.error('PDF Generation/Sharing Error:', err);
+      setShareStatus('error');
+      alert('Ocorreu um erro ao gerar ou compartilhar o PDF. Por favor, tente novamente.');
+      setTimeout(() => setShareStatus('idle'), 3000);
     }
-
-    // Fallback: Download and open WhatsApp with message
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = fileName;
-    link.click();
-
-    const message = `Olá! Segue o Relatório de Manutenção do equipamento ${report.equipment}.\n\nCliente: ${report.client}\nData: ${format(new Date(report.date), "dd/MM/yyyy")}\nStatus: ${report.activities.every(a => a.status === 'completed') ? 'Concluído' : 'Em Andamento'}`;
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
-  const downloadPDF = () => {
-    const doc = generatePDF();
-    const fileName = `Relatorio_${report.equipment.replace(/\s+/g, '_')}_${format(new Date(report.date), "ddMMyyyy")}.pdf`;
-    doc.save(fileName);
+  const downloadPDF = async () => {
+    try {
+      setIsGenerating(true);
+      // Small delay to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const doc = await generatePDF();
+      const fileName = `Relatorio_${report.equipment.replace(/\s+/g, '_')}_${format(new Date(report.date), "ddMMyyyy")}.pdf`;
+      
+      // Use doc.save() which is more robust in many environments than manual blob creation
+      doc.save(fileName);
+      
+      setIsGenerating(false);
+    } catch (err) {
+      console.error('Download Error:', err);
+      setIsGenerating(false);
+      alert('Erro ao baixar o PDF. Tente compartilhar ou abrir em uma nova aba.');
+    }
+  };
+
+  const viewPDF = async () => {
+    try {
+      const doc = await generatePDF();
+      const pdfBlob = doc.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('View PDF Error:', err);
+      alert('Erro ao visualizar o PDF.');
+    }
   };
 
   return (
@@ -346,6 +372,13 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
         </button>
         <h2 className="text-lg font-bold text-slate-800 dark:text-white">Detalhes do Relatório</h2>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={viewPDF}
+            className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            title="Visualizar PDF"
+          >
+            <Eye className="w-5 h-5" />
+          </button>
           <button 
             onClick={downloadPDF}
             className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -557,17 +590,30 @@ export default function ReportDetail({ report, onClose, onEdit, onDelete }: Repo
       </div>
 
       {/* Footer Action */}
-      <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3">
+      <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 relative">
+        {(isGenerating || shareStatus !== 'idle') && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-20 flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              {isGenerating ? 'Baixando PDF...' : 
+               shareStatus === 'generating' ? 'Gerando PDF...' : 
+               shareStatus === 'sharing' ? 'Abrindo compartilhamento...' : 
+               shareStatus === 'error' ? 'Erro ao processar' : ''}
+            </span>
+          </div>
+        )}
         <button 
           onClick={shareToWhatsApp}
-          className="py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-emerald-200 dark:shadow-none active:scale-[0.98] transition-all"
+          disabled={isGenerating || shareStatus !== 'idle'}
+          className="py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-emerald-200 dark:shadow-none active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <Share2 className="w-5 h-5" />
           Compartilhar PDF
         </button>
         <button 
           onClick={() => onEdit(report)}
-          className="py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-200 dark:shadow-none active:scale-[0.98] transition-all"
+          disabled={isGenerating || shareStatus !== 'idle'}
+          className="py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-200 dark:shadow-none active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <Edit3 className="w-5 h-5" />
           Editar

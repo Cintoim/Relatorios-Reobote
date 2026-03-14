@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Camera, Save, X, Loader2, Plus, PenTool, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'motion/react';
-import CameraCapture from './CameraCapture';
-import SignaturePad from './SignaturePad';
+import { Camera, Save, X, Loader2, Plus, Image as ImageIcon } from 'lucide-react';
+import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+const CameraCapture = dynamic(() => import('./CameraCapture'), { ssr: false });
+const SignaturePad = dynamic(() => import('./SignaturePad'), { ssr: false });
 import { ClientData } from './ClientForm';
 
 const activitySchema = z.object({
@@ -22,7 +23,7 @@ const idleHourSchema = z.object({
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:mm"),
 });
 
-const reportSchema = z.object({
+export const reportSchema = z.object({
   client: z.string().min(2, "Cliente é obrigatório"),
   requester: z.string().min(2, "Solicitante é obrigatório"),
   requesterEmail: z.string().optional(),
@@ -41,12 +42,16 @@ const reportSchema = z.object({
   supervisorSignature: z.string().optional(),
 });
 
-type ReportFormData = z.infer<typeof reportSchema>;
+export type Report = z.infer<typeof reportSchema> & { 
+  id: string; 
+  date: string;
+  photo?: string;
+};
 
   interface ReportFormProps {
-  initialData?: ReportFormData & { id?: string; photo?: string; photos?: string[]; date?: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string; startTime?: string; endTime?: string };
+  initialData?: Report | null;
   clients?: ClientData[];
-  onSave: (data: ReportFormData & { id?: string; photo?: string; photos?: string[]; date: string; clientSignature?: string; supervisorSignature?: string; observations?: string; equipmentTag?: string; equipmentLocation?: string; startTime?: string; endTime?: string }) => void;
+  onSave: (data: Report) => void;
   onCancel: () => void;
 }
 
@@ -55,7 +60,7 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
   const [photos, setPhotos] = useState<string[]>(initialData?.photos || (initialData?.photo ? [initialData.photo] : []));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, control, formState: { errors }, watch, setValue, reset } = useForm<ReportFormData>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<Report>({
     resolver: zodResolver(reportSchema),
     defaultValues: initialData || {
       activities: [{ type: "preventive", status: "completed", description: "" }]
@@ -128,12 +133,12 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
     return acc + calculateDuration(curr.startTime, curr.endTime);
   }, 0);
 
-  const onSubmit = async (data: ReportFormData) => {
+  const onSubmit = async (data: Report) => {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     onSave({
       ...data,
-      id: initialData?.id,
+      id: initialData?.id || '',
       photos: photos,
       date: initialData?.date || new Date().toISOString(),
     });
@@ -151,7 +156,34 @@ export default function ReportForm({ initialData, clients = [], onSave, onCancel
       Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setPhotos(prev => [...prev, reader.result as string]);
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            setPhotos(prev => [...prev, compressedDataUrl]);
+          };
+          img.src = reader.result as string;
         };
         reader.readAsDataURL(file);
       });

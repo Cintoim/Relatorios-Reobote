@@ -3,32 +3,9 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Clock, AlertCircle, Wrench, ClipboardList, User, MapPin } from 'lucide-react';
-import { motion } from 'motion/react';
-
-interface Activity {
-  type: string;
-  status: string;
-  description: string;
-}
-
-interface Report {
-  id: string;
-  client: string;
-  requester: string;
-  equipment: string;
-  equipmentTag?: string;
-  equipmentLocation?: string;
-  startTime?: string;
-  endTime?: string;
-  supervisor: string;
-  activities: Activity[];
-  date: string;
-  photo?: string;
-  observations?: string;
-  clientSignature?: string;
-  supervisorSignature?: string;
-}
+import { Wrench, ClipboardList, User, MapPin } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Report } from './ReportForm';
 
 interface ReportListProps {
   reports: Report[];
@@ -90,7 +67,7 @@ export default function ReportList({ reports, onReportClick }: ReportListProps) 
                 )}
                 {report.observations && (
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 line-clamp-1 italic">
-                    "{report.observations}"
+                    &quot;{report.observations}&quot;
                   </p>
                 )}
               </div>

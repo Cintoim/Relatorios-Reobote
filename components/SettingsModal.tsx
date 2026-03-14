@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Moon, Sun, Monitor } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface SettingsModalProps {

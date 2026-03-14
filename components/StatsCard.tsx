@@ -4,7 +4,7 @@ import React from 'react';
 import { ClipboardCheck, Clock, AlertCircle } from 'lucide-react';
 
 interface StatsCardProps {
-  reports: any[];
+  reports: { clientSignature?: string; supervisorSignature?: string }[];
   currentFilter: 'all' | 'pending' | 'completed';
   onFilterChange: (filter: 'all' | 'pending' | 'completed') => void;
 }
