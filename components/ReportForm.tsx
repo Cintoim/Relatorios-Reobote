@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Camera, Save, X, Loader2, Plus, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import dynamic from 'next/dynamic';
 const CameraCapture = dynamic(() => import('./CameraCapture'), { ssr: false });
 const SignaturePad = dynamic(() => import('./SignaturePad'), { ssr: false });

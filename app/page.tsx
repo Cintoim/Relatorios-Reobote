@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Settings, Search, ClipboardList, Users, Home as HomeIcon, FileText } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 // import confetti from 'canvas-confetti'; // Removed for SSR compatibility
 import StatsCard from '@/components/StatsCard';
 import ReportList from '@/components/ReportList';

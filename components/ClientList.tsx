@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, MapPin, Building2, Edit2, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { ClientData } from './ClientForm';
 
 interface ClientListProps {
@@ -42,7 +42,7 @@ export default function ClientList({ clients, onEdit, onDelete }: ClientListProp
                 <p className="text-xs font-medium text-slate-400 dark:text-slate-500">CNPJ: {client.cnpj}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1">
               <button 
                 onClick={() => onEdit(client)}
                 className="p-2 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

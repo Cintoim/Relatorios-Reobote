@@ -4,7 +4,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Wrench, ClipboardList, User, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Report } from './ReportForm';
 
 interface ReportListProps {

@@ -22,7 +22,7 @@ import {
   Loader2,
   Eye
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 // import jsPDF from 'jspdf'; // Removed for SSR compatibility
 // import { UserOptions } from 'jspdf-autotable'; // Removed for SSR compatibility
 import { Report } from './ReportForm';
